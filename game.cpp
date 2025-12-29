@@ -1,104 +1,105 @@
-#include "Game.h"
-#include <iostream>
-#include <fstream>
+#include "game.h"
 #include <cstdlib>
 #include <ctime>
-#include <vector>
-#include <algorithm> 
-#include <cctype>   
+#include <algorithm>
+#include <chrono>
+#include <thread>
 
-using namespace std;
 
-Game::Game(int difficulty) : lives(difficulty) {
-    secretWord = loadRandomWord();
-    transform(secretWord.begin(), secretWord.end(), secretWord.begin(), ::tolower);
-    hiddenWord = string(secretWord.length(), '_');
+void renkVer(int renkKodu) {
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), renkKodu);
 }
 
-string Game::loadRandomWord() {
-    vector<string> words;
-    ifstream file("words.txt");
-
-    if (!file.is_open()) {
-        cerr << "HATA: words.txt bulunamadi.\n";
-        exit(EXIT_FAILURE);
-    }
-
-    string word;
-    while (file >> word) {
-        words.push_back(word);
-    }
-    file.close();
-
-    if (words.empty()) {
-        cerr << "HATA: words.txt bos.\n";
-        exit(EXIT_FAILURE);
-    }
-
-    srand(static_cast<unsigned>(time(nullptr)));
-    return words[rand() % words.size()];
+void pencereAyari() {
+    SetConsoleTitle("KELIME AVI PRO");
 }
 
-bool Game::isAlreadyGuessed(char c) const {
-    for (char g : guessedLetters)
-        if (g == c) return true;
-    return false;
+void imleciKapat() {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(hOut, &cursorInfo);
+    cursorInfo.bVisible = false;
+    SetConsoleCursorInfo(hOut, &cursorInfo);
 }
 
-void Game::revealLetters(char c) {
-    for (size_t i = 0; i < secretWord.length(); i++) {
-        if (secretWord[i] == c)
-            hiddenWord[i] = c;
-    }
+void yuklemeEkrani() {
+    system("cls");
+    cout << "\n\n\tOYUN YUKLENIYOR...\n";
 }
 
 
-int Game::play() {
-    string input;
-    char guess;
-    int point = 100;
+OyuncuYonetimi::OyuncuYonetimi() : isim("Misafir"), oynanan(0), kazanilan(0), toplamPuan(0) {}
 
-    cout << "\n----------------------------------------";
-    cout << "\nGizli Kelime: " << secretWord.length() << " harfli";
-    cout << "\n----------------------------------------\n";
+void OyuncuYonetimi::profilYukle(string girilenIsim) {
+    isim = girilenIsim;
+    ifstream dosya(isim + "_profil.txt");
+    if (dosya.is_open()) { 
+        dosya >> oynanan >> kazanilan >> toplamPuan; 
+        dosya.close(); 
+    }
+}
 
-    while (lives > 0 && hiddenWord != secretWord) {
-        cout << "\nKelime: ";
-        for (char c : hiddenWord) cout << c << " ";
+void OyuncuYonetimi::kaydet() {
+    ofstream dosya(isim + "_profil.txt");
+    if (dosya.is_open()) { 
+        dosya << oynanan << "\n" << kazanilan << "\n" << toplamPuan; 
+        dosya.close(); 
+    }
+}
 
-        cout << "\nKalan Hak: " << lives;
-        cout << "\nTahmin: ";
-        cin >> input;
+void OyuncuYonetimi::kartiGoster() {
+    cout << "\n\tOYUNCU: " << isim;
+    cout << "\n\tPUAN: " << toplamPuan << endl;
+}
 
-        if (input.empty()) continue;
-        guess = tolower(input[0]);
 
-        if (isAlreadyGuessed(guess)) {
-            cout << ">> Bu harfi zaten girdin!\n";
-            continue;
+OyunMotoru::OyunMotoru(OyuncuYonetimi* o) : oyuncu(o) {}
+
+
+vector<KelimeVerisi> OyunMotoru::kelimeHavuzu(string secilenKat) {
+    vector<KelimeVerisi> liste;
+    ifstream dosya("words.txt");
+    
+    if (dosya.is_open()) {
+        string k, w, h;
+        while (dosya >> k >> w >> h) {
+            
+            replace(h.begin(), h.end(), '_', ' ');
+            
+            if (secilenKat == "HEPSI" || k == secilenKat) {
+                liste.push_back({k, w, h});
+            }
         }
-
-        guessedLetters.push_back(guess);
-
-        if (secretWord.find(guess) != string::npos) {
-            revealLetters(guess);
-            point += 20;
-            cout << ">> Dogru!\n";
-        } else {
-            lives--;
-            point -= 15;
-            cout << ">> Yanlis!\n";
-        }
-        
-        if (point < 0) point = 0;
-        cout << "Puan: " << point << endl;
+        dosya.close();
     }
 
-    if (hiddenWord == secretWord) {
-        cout << "\nKAZANDIN! Kelime: " << secretWord << endl;
-    } else {
-        cout << "\nKAYBETTIN! Kelime: " << secretWord << endl;
+    
+    if (liste.empty()) {
+        if (secilenKat == "HEPSI" || secilenKat == "TEKNOLOJI") 
+            liste.push_back({"TEKNOLOJI", "bilgisayar", "Kod_yazilan_makine"});
+        if (secilenKat == "HEPSI" || secilenKat == "MEYVE") 
+            liste.push_back({"MEYVE", "elma", "Kirmizi_veya_yesil"});
+        if (secilenKat == "HEPSI" || secilenKat == "SEHIR") 
+            liste.push_back({"SEHIR", "ankara", "Baskent"});
     }
+    return liste;
+}
 
-    return point;
+void OyunMotoru::harfiAc(char c) {
+    for (size_t i = 0; i < veri.kelime.length(); i++) {
+        if (veri.kelime[i] == c) gorunenKelime[i] = c;
+    }
+}
+
+string OyunMotoru::kategoriEkrani() {
+   
+    return "HEPSI"; 
+}
+
+void OyunMotoru::baslat(int zorluk) {
+
+    
+    can = zorluk;
+    maxCan = zorluk;
+    srand(time(nullptr));
 }

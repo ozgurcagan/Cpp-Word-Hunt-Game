@@ -27,6 +27,8 @@ Advanced console-based Word Hunt / Hangman game developed using C++. This projec
     ./game
     ```
 
+> **Note:** This project uses the `windows.h` library for console manipulation (colors, window size). Therefore, it is designed to run natively on **Windows** operating systems.
+
 ##  Screenshots
 
 The game features a custom "Application-like" console window:
@@ -42,3 +44,4 @@ The game features a custom "Application-like" console window:
 
 
 Developed by [Özgür Çağan]
+
